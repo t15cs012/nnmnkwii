@@ -326,9 +326,10 @@ def wildcards2regex(question, convert_number_pattern=False):
     question = prefix + question + postfix
 
     if convert_number_pattern:
-        question = question.replace('\\(\\\\d\\+\\)', '(\d+)')
-        question = question.replace(
-            '\\(\\[\\\\d\\\\\\.\\]\\+\\)', '([\d\.]+)')
+        a, b = question.split("\(")
+        b, c = b.split("\)")
+        b = re.sub(r'([dw])', r'\\\1', re.sub(r'\\+', '', b))
+        question = a + "(" + b + ")" + c
     return question
 
 

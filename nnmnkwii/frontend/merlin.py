@@ -156,6 +156,14 @@ def pattern_matching_continous_position(continuous_dict, label):
         if ms is not None:
             continuous_value = ms.group(1)
 
+        if isinstance(continuous_value, str):
+            if continuous_value == "xx":
+                continuous_value = -1.0
+            elif "m" in continuous_value:
+                continuous_value = 19 - int(continuous_value[1:])
+            elif "p" in continuous_value:
+                continuous_value = 19 + int(continuous_value[1:])
+
         lab_continuous_vector[0, i] = continuous_value
 
     return lab_continuous_vector
