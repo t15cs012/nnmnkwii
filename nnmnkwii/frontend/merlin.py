@@ -180,10 +180,7 @@ def load_labels_with_phone_alignment(hts_labels,
     dimension = frame_feature_size + dict_size
 
     assert isinstance(hts_labels, hts.HTSLabelFile)
-    if add_frame_features:
-        label_feature_matrix = np.empty((hts_labels.num_frames(), dimension))
-    else:
-        label_feature_matrix = np.empty((hts_labels.num_phones(), dimension))
+    label_feature_matrix = None
 
     label_feature_index = 0
 
@@ -245,14 +242,18 @@ def load_labels_with_phone_alignment(hts_labels,
                         "Combination of subphone_features and add_frame_features is not supported: {}, {}".format(
                             subphone_features, add_frame_features))
 
-            label_feature_matrix[label_feature_index:label_feature_index +
-                                 frame_number, ] = current_block_binary_array
+            if label_feature_matrix is None:
+                label_feature_matrix = current_block_binary_array
+            else:
+                label_feature_matrix = np.concatenate((label_feature_matrix, current_block_binary_array))
             label_feature_index = label_feature_index + frame_number
 
         elif subphone_features is None:
             current_block_binary_array = label_vector
-            label_feature_matrix[label_feature_index:label_feature_index +
-                                 1, ] = current_block_binary_array
+            if label_feature_matrix is None:
+                label_feature_matrix = current_block_binary_array
+            else:
+                label_feature_matrix = np.concatenate((label_feature_matrix, current_block_binary_array))
             label_feature_index = label_feature_index + 1
         else:
             pass
