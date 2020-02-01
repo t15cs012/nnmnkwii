@@ -3,7 +3,6 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 from sklearn.utils.extmath import _incremental_mean_and_var
-from sklearn.preprocessing.data import _handle_zeros_in_scale
 from scipy import signal
 
 
@@ -36,7 +35,25 @@ def _asfloat(x):
     # ugly wrapper to support torch/numpy arrays
     isnumpy = isinstance(x, np.ndarray)
     isscalar = np.isscalar(x)
-    return x.astype(np.float32) if isnumpy else float(x) if isscalar else x.float()
+    return x.astype(
+        np.float32) if isnumpy else float(x) if isscalar else x.float()
+
+
+def _handle_zeros_in_scale(scale, copy=True):
+    ''' Makes sure that whenever scale is zero, we handle it correctly.
+    This happens in most scalers when we have constant features.'''
+
+    # if we are fitting on 1D arrays, scale might be a scalar
+    if np.isscalar(scale):
+        if scale == .0:
+            scale = 1.
+        return scale
+    elif isinstance(scale, np.ndarray):
+        if copy:
+            # New array to avoid side-effects
+            scale = scale.copy()
+        scale[scale == 0.0] = 1.0
+        return scale
 
 
 def mulaw(x, mu=256):
@@ -265,8 +282,8 @@ def delta_features(x, windows):
     assert len(windows) > 0
     combined_features = np.empty((T, D * len(windows)), dtype=x.dtype)
     for idx, (_, _, window) in enumerate(windows):
-        combined_features[:, D * idx:D * idx +
-                          D] = _apply_delta_window(x, window)
+        combined_features[:, D * idx:D * idx + D] = _apply_delta_window(
+            x, window)
     return combined_features
 
 
@@ -292,7 +309,7 @@ def trim_zeros_frames(x, eps=1e-7):
     T, D = x.shape
     s = np.sum(np.abs(x), axis=1)
     s[s < eps] = 0.
-    return x[: len(np.trim_zeros(s))]
+    return x[:len(np.trim_zeros(s))]
 
 
 def remove_zeros_frames(x, eps=1e-7):
@@ -377,7 +394,11 @@ def adjust_frame_length(x, pad=True, divisible_by=1, **kwargs):
     return x
 
 
-def adjust_frame_lengths(x, y, pad=True, ensure_even=False, divisible_by=1,
+def adjust_frame_lengths(x,
+                         y,
+                         pad=True,
+                         ensure_even=False,
+                         divisible_by=1,
                          **kwargs):
     """Adjust frame lengths given two feature vectors or matrices.
 
@@ -457,8 +478,12 @@ def adjust_frame_lengths(x, y, pad=True, ensure_even=False, divisible_by=1,
     return x, y
 
 
-def meanvar(dataset, lengths=None, mean_=0., var_=0.,
-            last_sample_count=0, return_last_sample_count=False):
+def meanvar(dataset,
+            lengths=None,
+            mean_=0.,
+            var_=0.,
+            last_sample_count=0,
+            return_last_sample_count=False):
     """Mean/variance computation given a iterable dataset
 
     Dataset can have variable length samples. In that cases, you need to
@@ -497,8 +522,8 @@ def meanvar(dataset, lengths=None, mean_=0., var_=0.,
     for idx, x in enumerate(dataset):
         if lengths is not None:
             x = x[:lengths[idx]]
-        mean_, var_, _ = _incremental_mean_and_var(
-            x, mean_, var_, last_sample_count)
+        mean_, var_, _ = _incremental_mean_and_var(x, mean_, var_,
+                                                   last_sample_count)
         last_sample_count += len(x)
     mean_, var_ = mean_.astype(dtype), var_.astype(dtype)
 
@@ -508,8 +533,12 @@ def meanvar(dataset, lengths=None, mean_=0., var_=0.,
         return mean_, var_
 
 
-def meanstd(dataset, lengths=None, mean_=0., var_=0.,
-            last_sample_count=0, return_last_sample_count=False):
+def meanstd(dataset,
+            lengths=None,
+            mean_=0.,
+            var_=0.,
+            last_sample_count=0,
+            return_last_sample_count=False):
     """Mean/std-deviation computation given a iterable dataset
 
     Dataset can have variable length samples. In that cases, you need to
@@ -543,8 +572,8 @@ def meanstd(dataset, lengths=None, mean_=0., var_=0.,
         >>> lengths = [len(y) for y in Y]
         >>> data_mean, data_std = meanstd(Y, lengths)
     """
-    ret = meanvar(dataset, lengths, mean_, var_,
-                  last_sample_count, return_last_sample_count)
+    ret = meanvar(dataset, lengths, mean_, var_, last_sample_count,
+                  return_last_sample_count)
     m, v = ret[0], ret[1]
     v = _handle_zeros_in_scale(np.sqrt(v))
     if return_last_sample_count:
@@ -682,8 +711,12 @@ def minmax_scale_params(data_min, data_max, feature_range=(0, 1)):
     return min_, scale_
 
 
-def minmax_scale(x, data_min=None, data_max=None, feature_range=(0, 1),
-                 scale_=None, min_=None):
+def minmax_scale(x,
+                 data_min=None,
+                 data_max=None,
+                 feature_range=(0, 1),
+                 scale_=None,
+                 min_=None):
     """Min/max scaling for given a single data.
 
     Given data min, max and feature range, apply min/max normalization to data.
@@ -724,9 +757,11 @@ def minmax_scale(x, data_min=None, data_max=None, feature_range=(0, 1),
         >>> data_min, data_max = minmax(X)
         >>> scaled_x = minmax_scale(X[0], data_min, data_max)
     """
-    if (scale_ is None or min_ is None) and (data_min is None or data_max is None):
+    if (scale_ is None or min_ is None) and (data_min is None or
+                                             data_max is None):
         raise ValueError("""
-`data_min` and `data_max` or `scale_` and `min_` must be specified to perform minmax scale""")
+`data_min` and `data_max` or `scale_` and `min_` must be specified to perform minmax scale"""
+                        )
     if scale_ is None:
         scale_ = __minmax_scale_factor(data_min, data_max, feature_range)
     if min_ is None:
@@ -734,8 +769,12 @@ def minmax_scale(x, data_min=None, data_max=None, feature_range=(0, 1),
     return x * scale_ + min_
 
 
-def inv_minmax_scale(x, data_min=None, data_max=None, feature_range=(0, 1),
-                     scale_=None, min_=None):
+def inv_minmax_scale(x,
+                     data_min=None,
+                     data_max=None,
+                     feature_range=(0, 1),
+                     scale_=None,
+                     min_=None):
     """Inverse transform of min/max scaling for given a single data.
 
     Given data min, max and feature range, apply min/max denormalization to data.
@@ -763,9 +802,11 @@ def inv_minmax_scale(x, data_min=None, data_max=None, feature_range=(0, 1),
         :func:`nnmnkwii.preprocessing.minmax_scale`,
         :func:`nnmnkwii.preprocessing.minmax_scale_params`
     """
-    if (scale_ is None or min_ is None) and (data_min is None or data_max is None):
+    if (scale_ is None or min_ is None) and (data_min is None or
+                                             data_max is None):
         raise ValueError("""
-`data_min` and `data_max` or `scale_` and `min_` must be specified to perform inverse of minmax scale""")
+`data_min` and `data_max` or `scale_` and `min_` must be specified to perform inverse of minmax scale"""
+                        )
     if scale_ is None:
         scale_ = __minmax_scale_factor(data_min, data_max, feature_range)
     if min_ is None:
