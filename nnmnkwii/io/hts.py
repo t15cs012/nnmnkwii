@@ -138,8 +138,8 @@ J:13+9-2[2]')
                     end_time, start_time))
         if len(self.end_times) > 0 and start_time != self.end_times[-1]:
             raise ValueError(
-                "start_time ({}) must be equal to the last end_time ({}).".format(
-                    start_time, self.end_times[-1]))
+                "start_time ({}) must be equal to the last end_time ({}).".
+                format(start_time, self.end_times[-1]))
 
         self.start_times.append(start_time)
         self.end_times.append(end_time)
@@ -247,10 +247,11 @@ J:13+9-2[2]')
             return np.empty(0)
         start_times = np.array(self.start_times)
         end_times = np.array(self.end_times)
+        f = (end_times - start_times)[indices] // frame_shift_in_micro_sec
         s = start_times[indices] // frame_shift_in_micro_sec
-        e = end_times[indices] // frame_shift_in_micro_sec
-        return np.unique(np.concatenate(
-            [np.arange(a, b) for (a, b) in zip(s, e)], axis=0)).astype(np.int)
+        return np.unique(
+            np.concatenate([np.arange(a, a + b) for (a, b) in zip(s, f)],
+                           axis=0)).astype(np.int)
 
     def is_state_alignment_label(self):
         return self.contexts[0][-1] == ']' and self.contexts[0][-3] == '['
@@ -377,8 +378,8 @@ def load_question_set(qs_file_name):
         question_key = temp_list[1]
         if temp_list[0] == 'CQS':
             assert len(question_list) == 1
-            processed_question = wildcards2regex(
-                question_list[0], convert_number_pattern=True)
+            processed_question = wildcards2regex(question_list[0],
+                                                 convert_number_pattern=True)
             continuous_dict[continuous_qs_index] = re.compile(
                 processed_question)  # save pre-compiled regular expression
             continuous_qs_index = continuous_qs_index + 1
